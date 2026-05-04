@@ -414,25 +414,30 @@ def _build_shells(num_electrons):
 def _orbit_position(radius, angle, tilt_x_deg, tilt_z_deg):
     """
     Return 3D world position for an electron.
-    Rotation order MUST match the glRotatef order in draw_orbit_ring:
-      first Rot_Z (tilt_z), then Rot_X (tilt_x).
-    In matrix terms: final = Rot_Z * Rot_X * v
+
+    draw_orbit_ring does:
+        glRotatef(tilt_z, 0,0,1)   <- call 1:  M = Rot_Z
+        glRotatef(tilt_x, 1,0,0)   <- call 2:  M = Rot_Z · Rot_X
+    So a ring vertex v is placed at: Rot_Z · Rot_X · v.
+
+    To match, we must compute: Rot_Z · (Rot_X · v)
+    i.e. apply Rot_X to the point FIRST, then Rot_Z.
     """
     x = radius * math.cos(angle)
     y = radius * math.sin(angle)
     z = 0.0
 
-    # 1. Apply Rot_Z (around Z axis)
+    # 1. Apply Rot_X (around X axis) — innermost rotation
+    tx  = math.radians(tilt_x_deg)
+    y2  = y * math.cos(tx) - z * math.sin(tx)
+    z2  = y * math.sin(tx) + z * math.cos(tx)
+    y, z = y2, z2
+
+    # 2. Apply Rot_Z (around Z axis) — outermost rotation
     tz  = math.radians(tilt_z_deg)
     x2  = x * math.cos(tz) - y * math.sin(tz)
     y2  = x * math.sin(tz) + y * math.cos(tz)
     x, y = x2, y2
-
-    # 2. Apply Rot_X (around X axis)
-    tx  = math.radians(tilt_x_deg)
-    y3  = y * math.cos(tx) - z * math.sin(tx)
-    z3  = y * math.sin(tx) + z * math.cos(tx)
-    y, z = y3, z3
 
     return x, y, z
 
